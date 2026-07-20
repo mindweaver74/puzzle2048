@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="description" content="같은 숫자 타일을 합쳐 2048을 만들어라! 스와이프로 즐기는 네온 감성 숫자 퍼즐 게임.">
+<meta property="og:title" content="🔢 숫자 합치기 — 2048 퍼즐">
+<meta property="og:description" content="같은 숫자를 합쳐 2048을 만들어라! 네온 감성의 캐주얼 숫자 퍼즐.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://mindweaver74.github.io/puzzle2048">
+<link rel="canonical" href="https://mindweaver74.github.io/puzzle2048">
+<title>🔢 숫자 합치기</title>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8357338943233901" crossorigin="anonymous"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;}
+html,body{width:100%;height:100%;overflow:hidden;touch-action:none;background:#050510;font-family:-apple-system,Arial,sans-serif;}
+#c{display:block;position:fixed;top:0;left:0;width:100%;height:100%;z-index:1;}
+#hud{position:fixed;top:0;left:0;width:100%;z-index:10;pointer-events:none;
+  display:flex;justify-content:space-between;align-items:center;
+  padding:max(12px,env(safe-area-inset-top)) 16px 8px;
+  background:linear-gradient(to bottom,rgba(0,0,10,0.6),transparent);}
+.hud-box{text-align:center;min-width:70px;}
+.hud-lbl{font-size:9px;color:rgba(255,255,255,0.4);letter-spacing:2px;}
+.hud-val{font-size:22px;font-weight:900;color:#fff;}
+#overlay{position:fixed;top:0;left:0;width:100%;height:100%;
+  background:rgba(5,5,20,0.95);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;z-index:100;
+  padding:20px;padding-top:max(20px,env(safe-area-inset-top));
+  padding-bottom:max(20px,env(safe-area-inset-bottom));text-align:center;}
+.ov-title{font-size:40px;font-weight:900;
+  background:linear-gradient(135deg,#4af,#ffd700,#f84);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;margin-bottom:8px;}
+.ov-sub{font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:8px;line-height:1.9;}
+.ov-score{font-size:60px;font-weight:900;color:#fff;line-height:1;margin-bottom:4px;}
+.ov-best{font-size:13px;color:#ffd700;margin-bottom:14px;}
+.ov-stats{display:flex;flex-direction:row;gap:10px;margin-bottom:16px;width:100%;max-width:300px;}
+.ov-stat{flex:1;background:rgba(255,255,255,0.07);border-radius:12px;padding:10px 6px;}
+.ov-sv{font-size:20px;font-weight:700;color:#fff;}
+.ov-sl{font-size:10px;color:rgba(255,255,255,0.4);margin-top:2px;}
+.big-btn{padding:14px 44px;border-radius:50px;border:none;font-size:16px;font-weight:700;
+  cursor:pointer;-webkit-appearance:none;width:100%;max-width:300px;margin:5px 0;display:block;}
+.btn-play{background:linear-gradient(135deg,#4af,#ffd700);color:#fff;}
+.btn-retry{background:linear-gradient(135deg,#f44,#f80);color:#fff;}
+.btn-cont{background:linear-gradient(135deg,#0f8,#4af);color:#fff;}
+#footer{position:fixed;bottom:0;left:0;width:100%;
+  padding:3px 16px max(5px,env(safe-area-inset-bottom));
+  display:flex;justify-content:space-between;pointer-events:none;z-index:5;}
+#footer a{font-size:10px;color:rgba(255,255,255,0.2);text-decoration:none;pointer-events:all;}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud">
+  <div class="hud-box"><div class="hud-lbl">SCORE</div><div class="hud-val" id="h-score">0</div></div>
+  <div class="hud-box"><div class="hud-lbl">BEST</div><div class="hud-val" id="h-best" style="color:#ffd700;font-size:16px;">0</div></div>
+  <div class="hud-box"><div class="hud-lbl">MAX</div><div class="hud-val" id="h-max" style="font-size:16px;">2</div></div>
+</div>
+<div id="footer">
+  <a href="https://mindweaver74.github.io/Jutopia">🎮 Jutopia</a>
+  <a href="https://mindweaver74.github.io/Jutopia/privacy.html">개인정보처리방침</a>
+</div>
+<div id="overlay">
+  <div class="ov-title">🔢 숫자 합치기</div>
+  <div class="ov-sub" id="ov-sub">같은 숫자 타일을 합쳐 <b style="color:#ffd700">2048</b>을 만들어라!</div>
+
+  <!-- 시작 화면 전용 소개 (게임 중/오버 시 JS로 숨김) -->
+  <div id="intro-info" style="width:100%;max-width:300px;margin-bottom:14px;">
+    <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px 14px;margin-bottom:8px;text-align:left;">
+      <div style="font-size:10px;color:rgba(255,255,255,0.35);letter-spacing:1px;margin-bottom:8px;">📋 게임 방법</div>
+      <div style="display:flex;flex-direction:column;gap:5px;">
+        <div style="font-size:12px;color:rgba(255,255,255,0.55);line-height:1.6;"><span style="color:#4af;font-weight:700;">① </span>스와이프하면 모든 타일이 그 방향으로 이동</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.55);line-height:1.6;"><span style="color:#4af;font-weight:700;">② </span>같은 숫자끼리 만나면 합쳐져서 <b style="color:rgba(255,255,255,0.8)">2배</b></div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.55);line-height:1.6;"><span style="color:#ffd700;font-weight:700;">③ </span><b style="color:#ffd700">2048</b> 타일을 만들면 승리!</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <div style="flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:9px 10px;text-align:center;">
+        <div style="font-size:16px;margin-bottom:2px;">👆</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.4);">스와이프</div>
+      </div>
+      <div style="flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:9px 10px;text-align:center;">
+        <div style="font-size:16px;margin-bottom:2px;">⌨️</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.4);">방향키·WASD</div>
+      </div>
+      <div style="flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:9px 10px;text-align:center;">
+        <div style="font-size:16px;margin-bottom:2px;">💾</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.4);">이어하기</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ov-score" id="ov-score" style="display:none;"></div>
+  <div class="ov-best" id="ov-best" style="display:none;"></div>
+  <div class="ov-stats" id="ov-stats" style="display:none;">
+    <div class="ov-stat"><div class="ov-sv" id="st-moves">0</div><div class="ov-sl">이동 수</div></div>
+    <div class="ov-stat"><div class="ov-sv" id="st-max">0</div><div class="ov-sl">최고 타일</div></div>
+    <div class="ov-stat"><div class="ov-sv" id="st-combo">0</div><div class="ov-sl">최대 콤보</div></div>
+  </div>
+  <button class="big-btn btn-cont" id="btn-cont" style="display:none;">▶ 이어하기</button>
+  <button class="big-btn btn-play" id="btn-play">🔢 시작!</button>
+</div>
+
+<script>
+// ── 캔버스 ──
+var canvas = document.getElementById('c');
+var ctx = canvas.getContext('2d');
+var W, H, BOARD_X, BOARD_Y, BOARD_SIZE, CELL, GAP;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  var maxB = Math.min(W, H) * 0.88;
+  BOARD_SIZE = Math.min(maxB, 440);
+  GAP = Math.floor(BOARD_SIZE * 0.025);
+  CELL = Math.floor((BOARD_SIZE - GAP * 5) / 4);
+  BOARD_X = (W - BOARD_SIZE) / 2;
+  BOARD_Y = (H - BOARD_SIZE) / 2 + 20;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ── 타일 색상 ──
+var COLORS = {
+  0:    { bg: 'rgba(255,255,255,0.04)', fg: 'rgba(0,0,0,0)', glow: 'rgba(0,0,0,0)' },
+  2:    { bg: '#1a2a3a', fg: '#8cf', glow: '#4af' },
+  4:    { bg: '#1a3a2a', fg: '#8fc', glow: '#0f8' },
+  8:    { bg: '#3a2a10', fg: '#fda', glow: '#f80' },
+  16:   { bg: '#3a1a10', fg: '#f98', glow: '#f44' },
+  32:   { bg: '#2a1030', fg: '#d8f', glow: '#a4f' },
+  64:   { bg: '#101830', fg: '#8af', glow: '#4af' },
+  128:  { bg: '#301520', fg: '#f8a', glow: '#f44' },
+  256:  { bg: '#182818', fg: '#8f8', glow: '#0f0' },
+  512:  { bg: '#281818', fg: '#f88', glow: '#f00' },
+  1024: { bg: '#281a08', fg: '#fdb', glow: '#fa0' },
+  2048: { bg: '#201800', fg: '#ffd700', glow: '#ffd700' }
+};
+function getColor(v) {
+  return COLORS[v] || { bg: '#201020', fg: '#e0c0ff', glow: '#c4f' };
+}
+
+// ── 게임 상태 ──
+var grid = [];       // 4×4 2D 배열 — 항상 newGrid()로 초기화
+var score = 0, best = 0, moves = 0, maxTile = 2, maxCombo = 0, combo = 0;
+var gameOver = false, won = false;
+var particles = [], popAnims = [];
+var frame = 0;
+var bgStars = [];
+var gameStarted = false; // 게임 시작 여부
+
+// grid를 4×4로 만들어주는 함수 — 항상 이걸로 초기화
+function newGrid() {
+  var g = [];
+  for (var r = 0; r < 4; r++) {
+    g[r] = [0, 0, 0, 0];
+  }
+  return g;
+}
+
+// 시작 전에 미리 빈 그리드로 초기화 (루프에서 안전하게 접근 가능)
+grid = newGrid();
+
+// ── 저장 ──
+function saveBest() { try { localStorage.setItem('2048best', best); } catch(e) {} }
+function loadBest() { try { best = +(localStorage.getItem('2048best') || 0); } catch(e) {} }
+function saveState() { try { localStorage.setItem('2048state', JSON.stringify({ grid: grid, score: score, moves: moves, maxTile: maxTile })); } catch(e) {} }
+function loadState() {
+  try {
+    var s = JSON.parse(localStorage.getItem('2048state'));
+    if (s && Array.isArray(s.grid) && s.grid.length === 4 && Array.isArray(s.grid[0]) && s.grid[0].length === 4) {
+      grid = s.grid; score = s.score || 0; moves = s.moves || 0; maxTile = s.maxTile || 2;
+      return true;
+    }
+  } catch(e) {}
+  return false;
+}
+loadBest();
+
+// ── 별 배경 ──
+function initStars() {
+  bgStars = [];
+  for (var i = 0; i < 80; i++) {
+    bgStars.push({ x: Math.random()*W, y: Math.random()*H, r: Math.random()*1.3+0.2, ph: Math.random()*Math.PI*2, sp: 0.008+Math.random()*0.015 });
+  }
+}
+initStars();
+
+// ── 유틸 ──
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y); ctx.lineTo(x+w-r, y); ctx.arcTo(x+w, y, x+w, y+r, r);
+  ctx.lineTo(x+w, y+h-r); ctx.arcTo(x+w, y+h, x+w-r, y+h, r);
+  ctx.lineTo(x+r, y+h); ctx.arcTo(x, y+h, x, y+h-r, r);
+  ctx.lineTo(x, y+r); ctx.arcTo(x, y, x+r, y, r);
+  ctx.closePath();
+}
+function cellPos(r, c) {
+  return { x: BOARD_X + GAP + (CELL + GAP) * c, y: BOARD_Y + GAP + (CELL + GAP) * r };
+}
+function getPopScale(r, c) {
+  for (var i = 0; i < popAnims.length; i++) {
+    if (popAnims[i].r === r && popAnims[i].c === c) return popAnims[i].scale;
+  }
+  return 1;
+}
+
+// ── 그리기 ──
+function drawBg() {
+  var bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#020210'); bg.addColorStop(1, '#050518');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+  bgStars.forEach(function(s) {
+    s.ph += s.sp;
+    ctx.save(); ctx.globalAlpha = Math.sin(s.ph) * 0.3 + 0.5;
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  });
+}
+
+function drawTile(r, c, v) {
+  var p = cellPos(r, c);
+  var col = getColor(v);
+  var sc = getPopScale(r, c);
+  ctx.save();
+  if (sc !== 1) {
+    ctx.translate(p.x + CELL/2, p.y + CELL/2);
+    ctx.scale(sc, sc);
+    ctx.translate(-CELL/2, -CELL/2);
+    p = { x: 0, y: 0 };
+  }
+  ctx.shadowColor = col.glow; ctx.shadowBlur = v >= 128 ? 18 : 10;
+  ctx.fillStyle = col.bg;
+  roundRect(p.x, p.y, CELL, CELL, 10); ctx.fill();
+  ctx.strokeStyle = col.glow; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.5;
+  roundRect(p.x, p.y, CELL, CELL, 10); ctx.stroke();
+  ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+  var fs = v < 100 ? CELL*0.38 : v < 1000 ? CELL*0.3 : CELL*0.24;
+  ctx.font = '900 ' + Math.floor(fs) + 'px Arial';
+  ctx.fillStyle = col.fg; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.shadowColor = col.glow; ctx.shadowBlur = v >= 64 ? 12 : 0;
+  ctx.fillText(v, p.x + CELL/2, p.y + CELL/2);
+  ctx.restore();
+}
+
+function drawBoard() {
+  // 보드 배경
+  ctx.save();
+  ctx.fillStyle = 'rgba(255,255,255,0.04)';
+  ctx.shadowColor = 'rgba(100,150,255,0.15)'; ctx.shadowBlur = 20;
+  roundRect(BOARD_X, BOARD_Y, BOARD_SIZE, BOARD_SIZE, 16); ctx.fill();
+  ctx.shadowBlur = 0;
+  // 빈 셀
+  for (var r = 0; r < 4; r++) {
+    for (var c = 0; c < 4; c++) {
+      var p = cellPos(r, c);
+      ctx.fillStyle = 'rgba(255,255,255,0.04)';
+      roundRect(p.x, p.y, CELL, CELL, 10); ctx.fill();
+    }
+  }
+  ctx.restore();
+  // 타일
+  for (var r = 0; r < 4; r++) {
+    for (var c = 0; c < 4; c++) {
+      var v = grid[r][c];
+      if (v > 0) drawTile(r, c, v);
+    }
+  }
+}
+
+// ── 파티클 ──
+function addMergeParticles(r, c, v) {
+  var p = cellPos(r, c);
+  var cx = p.x + CELL/2, cy = p.y + CELL/2;
+  var col = getColor(v).glow;
+  for (var i = 0; i < 8; i++) {
+    var a = Math.random() * Math.PI * 2, spd = 2 + Math.random() * 4;
+    particles.push({ x: cx, y: cy, vx: Math.cos(a)*spd, vy: Math.sin(a)*spd, life: 1, color: col, sz: 2+Math.random()*4 });
+  }
+  popAnims.push({ r: r, c: c, scale: 1.25, life: 1 });
+}
+
+function addWinParticles() {
+  var cols = ['#ffd700','#f44','#4af','#0f8','#c4f','#f80'];
+  for (var i = 0; i < 60; i++) {
+    particles.push({
+      x: Math.random()*W, y: Math.random()*H*0.4,
+      vx: (Math.random()-0.5)*6, vy: Math.random()*4+2,
+      life: 1, color: cols[Math.floor(Math.random()*cols.length)],
+      sz: 4+Math.random()*6, gravity: 0.1
+    });
+  }
+}
+
+// ── 게임 로직 ──
+function addRandom() {
+  var empty = [];
+  for (var r = 0; r < 4; r++)
+    for (var c = 0; c < 4; c++)
+      if (grid[r][c] === 0) empty.push([r, c]);
+  if (!empty.length) return;
+  var pos = empty[Math.floor(Math.random() * empty.length)];
+  grid[pos[0]][pos[1]] = Math.random() < 0.85 ? 2 : 4;
+}
+
+// 왼쪽으로 밀기 (rotate 후 항상 이 함수만 사용)
+function slideLeft() {
+  var moved = false;
+  for (var r = 0; r < 4; r++) {
+    var row = [];
+    // 0 제거
+    for (var c = 0; c < 4; c++) if (grid[r][c] !== 0) row.push(grid[r][c]);
+    // 합치기
+    for (var i = 0; i < row.length - 1; i++) {
+      if (row[i] === row[i+1]) {
+        row[i] *= 2;
+        score += row[i];
+        combo++;
+        if (combo > maxCombo) maxCombo = combo;
+        if (row[i] > maxTile) maxTile = row[i];
+        addMergeParticles(r, i, row[i]);
+        sfxMerge(row[i]);
+        row.splice(i+1, 1);
+        moved = true;
+      } else {
+        combo = 0;
+      }
+    }
+    // 0 채우기
+    while (row.length < 4) row.push(0);
+    // 변경 여부
+    for (var c = 0; c < 4; c++) {
+      if (grid[r][c] !== row[c]) moved = true;
+      grid[r][c] = row[c];
+    }
+  }
+  return moved;
+}
+
+// 그리드 90도 시계방향 회전 (times 번)
+function rotate(times) {
+  for (var t = 0; t < times; t++) {
+    var next = newGrid();
+    for (var r = 0; r < 4; r++)
+      for (var c = 0; c < 4; c++)
+        next[c][3-r] = grid[r][c];
+    grid = next;
+  }
+}
+
+function move(dir) {
+  if (gameOver || !gameStarted) return;
+  combo = 0;
+  var rotMap = { left: 0, up: 3, right: 2, down: 1 };
+  var times = rotMap[dir] || 0;
+  rotate(times);
+  var moved = slideLeft();
+  rotate((4 - times) % 4);
+  if (moved) {
+    moves++;
+    addRandom();
+    updateHUD();
+    saveState();
+    if (score > best) { best = score; saveBest(); }
+    if (!won && maxTile >= 2048) {
+      won = true;
+      addWinParticles();
+      setTimeout(showResult, 800);
+    } else if (!canMove()) {
+      gameOver = true;
+      setTimeout(showResult, 600);
+    }
+  }
+}
+
+function canMove() {
+  for (var r = 0; r < 4; r++)
+    for (var c = 0; c < 4; c++) {
+      if (grid[r][c] === 0) return true;
+      if (c < 3 && grid[r][c] === grid[r][c+1]) return true;
+      if (r < 3 && grid[r][c] === grid[r+1][c]) return true;
+    }
+  return false;
+}
+
+// ── 효과음 ──
+var sfxCtx = null;
+function getSfx() {
+  if (!sfxCtx) try { sfxCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+  if (sfxCtx && sfxCtx.state === 'suspended') sfxCtx.resume();
+  return sfxCtx;
+}
+function sfxMerge(v) {
+  var a = getSfx(); if (!a) return;
+  try {
+    var freqMap = { 2:300,4:380,8:460,16:540,32:620,64:700,128:820,256:920,512:1020,1024:1120,2048:1400 };
+    var f = freqMap[v] || 1200;
+    var t = a.currentTime;
+    var o = a.createOscillator(), g = a.createGain();
+    o.connect(g); g.connect(a.destination);
+    o.type = 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.1, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t+0.1);
+    o.start(t); o.stop(t+0.12);
+    if (v >= 256) {
+      var o2 = a.createOscillator(), g2 = a.createGain();
+      o2.connect(g2); g2.connect(a.destination);
+      o2.type = 'sine'; o2.frequency.value = f * 1.5;
+      g2.gain.setValueAtTime(0.06, t+0.05);
+      g2.gain.exponentialRampToValueAtTime(0.001, t+0.18);
+      o2.start(t+0.05); o2.stop(t+0.2);
+    }
+  } catch(e) {}
+}
+function sfxWin() {
+  [523,659,784,1047].forEach(function(f, i) {
+    setTimeout(function() {
+      var a = getSfx(); if (!a) return;
+      try {
+        var t = a.currentTime;
+        var o = a.createOscillator(), g = a.createGain();
+        o.connect(g); g.connect(a.destination);
+        o.frequency.value = f;
+        g.gain.setValueAtTime(0.15, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t+0.2);
+        o.start(t); o.stop(t+0.22);
+      } catch(e) {}
+    }, i * 100);
+  });
+}
+
+// ── HUD ──
+function updateHUD() {
+  document.getElementById('h-score').textContent = score;
+  document.getElementById('h-best').textContent = best;
+  document.getElementById('h-max').textContent = maxTile;
+}
+
+// ── 결과 화면 ──
+function showResult() {
+  if (won) sfxWin();
+  document.getElementById('ov-sub').textContent = won ? '🏆 2048 달성! 축하합니다!' : '더 이상 움직일 수 없어요!';
+  var ii = document.getElementById('intro-info'); if(ii) ii.style.display='none';
+  document.getElementById('ov-score').textContent = score;
+  document.getElementById('ov-score').style.display = 'block';
+  document.getElementById('ov-best').textContent = (score >= best && score > 0) ? '🏆 신기록!' : '최고: ' + best;
+  document.getElementById('ov-best').style.display = 'block';
+  document.getElementById('ov-stats').style.display = 'flex';
+  document.getElementById('st-moves').textContent = moves;
+  document.getElementById('st-max').textContent = maxTile;
+  document.getElementById('st-combo').textContent = maxCombo;
+  document.getElementById('btn-cont').style.display = won ? 'block' : 'none';
+  document.getElementById('btn-play').textContent = '🔄 다시 시작!';
+  document.getElementById('btn-play').className = 'big-btn btn-retry';
+  document.getElementById('overlay').style.display = 'flex';
+}
+
+// ── 게임 시작 ──
+function startGame(cont) {
+  getSfx();
+  if (cont && loadState() && canMove()) {
+    // 이어하기 — grid 이미 로드됨
+  } else {
+    grid = newGrid();
+    score = 0; moves = 0; maxTile = 2; maxCombo = 0; combo = 0;
+    addRandom(); addRandom();
+  }
+  gameOver = false; won = false; gameStarted = true;
+  particles = []; popAnims = [];
+  updateHUD();
+  document.getElementById('overlay').style.display = 'none';
+  document.getElementById('ov-score').style.display = 'none';
+  document.getElementById('ov-best').style.display = 'none';
+  document.getElementById('ov-stats').style.display = 'none';
+  document.getElementById('ov-sub').textContent = '같은 숫자 타일을 합쳐 2048을 만들어라!';
+  var ii2 = document.getElementById('intro-info'); if(ii2) ii2.style.display='block';
+  document.getElementById('btn-play').textContent = '🔢 시작!';
+  document.getElementById('btn-play').className = 'big-btn btn-play';
+}
+
+// ── 메인 루프 ──
+function loop() {
+  requestAnimationFrame(loop);
+  frame++;
+  drawBg();
+  drawBoard();
+  // 파티클
+  ctx.save();
+  for (var i = particles.length - 1; i >= 0; i--) {
+    var p = particles[i];
+    p.x += p.vx; p.y += p.vy;
+    if (p.gravity) p.vy += p.gravity;
+    else { p.vx *= 0.95; p.vy *= 0.95; }
+    p.life -= p.gravity ? 0.018 : 0.04;
+    if (p.life <= 0) { particles.splice(i, 1); continue; }
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    ctx.shadowColor = p.color; ctx.shadowBlur = 6;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.sz * p.life, 0, Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+  ctx.restore();
+  // 팝 애니메이션
+  for (var i = popAnims.length - 1; i >= 0; i--) {
+    var a = popAnims[i];
+    a.life -= 0.1;
+    a.scale = 1 + a.life * 0.25;
+    if (a.life <= 0) popAnims.splice(i, 1);
+  }
+  // 게임오버/승리 시 보드 어둡게
+  if ((gameOver || won) && gameStarted) {
+    ctx.save(); ctx.globalAlpha = 0.35;
+    ctx.fillStyle = '#000';
+    roundRect(BOARD_X, BOARD_Y, BOARD_SIZE, BOARD_SIZE, 16);
+    ctx.fill(); ctx.restore();
+  }
+}
+
+// ── 입력 ──
+var touchStartX = 0, touchStartY = 0;
+canvas.addEventListener('touchstart', function(e) {
+  e.preventDefault();
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+  getSfx();
+}, { passive: false });
+canvas.addEventListener('touchend', function(e) {
+  e.preventDefault();
+  var dx = e.changedTouches[0].clientX - touchStartX;
+  var dy = e.changedTouches[0].clientY - touchStartY;
+  var absDx = Math.abs(dx), absDy = Math.abs(dy);
+
+  // 스와이프 (30px 이상)
+  if (absDx >= 30 || absDy >= 30) {
+    if (absDx > absDy) move(dx > 0 ? 'right' : 'left');
+    else move(dy > 0 ? 'down' : 'up');
+    return;
+  }
+
+  // 탭 — 보드 기준 위치로 방향 결정
+  var tx = e.changedTouches[0].clientX;
+  var ty = e.changedTouches[0].clientY;
+  var bCx = BOARD_X + BOARD_SIZE / 2;
+  var bCy = BOARD_Y + BOARD_SIZE / 2;
+  var rx = tx - bCx, ry = ty - bCy;
+  // 대각선 기준으로 4방향
+  if (Math.abs(rx) > Math.abs(ry)) move(rx > 0 ? 'right' : 'left');
+  else move(ry > 0 ? 'down' : 'up');
+}, { passive: false });
+window.addEventListener('keydown', function(e) {
+  var map = { ArrowLeft:'left', ArrowRight:'right', ArrowUp:'up', ArrowDown:'down', a:'left', d:'right', w:'up', s:'down' };
+  if (map[e.key]) { e.preventDefault(); getSfx(); move(map[e.key]); }
+});
+
+function bindBtn(id, fn) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('click', fn);
+  el.addEventListener('touchend', function(e) { e.preventDefault(); e.stopPropagation(); fn(); }, { passive: false });
+}
+bindBtn('btn-play', function() { startGame(false); });
+bindBtn('btn-cont', function() {
+  gameOver = false; won = false;
+  document.getElementById('overlay').style.display = 'none';
+});
+
+// 이어하기 버튼 표시
+(function() {
+  var saved = localStorage.getItem('2048state');
+  if (saved) {
+    document.getElementById('btn-cont').style.display = 'block';
+    document.getElementById('btn-cont').textContent = '▶ 이어하기';
+  }
+})();
+
+updateHUD();
+loop();
+</script>
+
+<!-- ── 게임 설명 섹션 ── -->
+<div id="game-desc" style="max-width:600px;margin:32px auto 0;padding:0 16px max(40px,env(safe-area-inset-bottom)+30px);font-family:-apple-system,Arial,sans-serif;">
+  <div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:24px;">
+
+    <h2 style="font-size:16px;font-weight:700;color:rgba(255,255,255,0.85);margin-bottom:8px;">🔢 숫자 합치기란?</h2>
+    <p style="font-size:13px;color:rgba(255,255,255,0.5);line-height:1.85;margin-bottom:18px;">4×4 격자판에서 같은 숫자 타일을 합쳐 <strong style="color:rgba(255,215,0,0.9)">2048</strong>을 만드는 숫자 퍼즐 게임입니다. 스와이프 하나로 모든 타일이 한쪽으로 이동하고, 같은 숫자끼리 만나면 합쳐져서 2배가 됩니다. 단순한 규칙이지만 한 번 시작하면 멈추기 어려운 중독성 있는 퍼즐이에요!</p>
+
+    <h3 style="font-size:13px;font-weight:700;color:rgba(255,255,255,0.7);margin-bottom:8px;letter-spacing:0.5px;">📋 게임 방법</h3>
+    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px;margin-bottom:14px;">
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;gap:10px;align-items:flex-start;">
+          <span style="font-size:13px;color:#4af;font-weight:700;min-width:20px;">①</span>
+          <p style="font-size:12px;color:rgba(255,255,255,0.55);line-height:1.7;margin:0;">상하좌우로 <strong style="color:rgba(255,255,255,0.8);">스와이프</strong>하면 모든 타일이 그 방향으로 쏠립니다</p>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start;">
+          <span style="font-size:13px;color:#4af;font-weight:700;min-width:20px;">②</span>
+          <p style="font-size:12px;color:rgba(255,255,255,0.55);line-height:1.7;margin:0;">같은 숫자 타일 둘이 만나면 <strong style="color:rgba(255,255,255,0.8);">합쳐져서 2배</strong>가 됩니다 (2+2=4, 4+4=8…)</p>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start;">
+          <span style="font-size:13px;color:#4af;font-weight:700;min-width:20px;">③</span>
+          <p style="font-size:12px;color:rgba(255,255,255,0.55);line-height:1.7;margin:0;">이동할 때마다 빈 칸에 <strong style="color:rgba(255,255,255,0.8);">2 또는 4</strong> 타일이 새로 등장합니다</p>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start;">
+          <span style="font-size:13px;color:#ffd700;font-weight:700;min-width:20px;">④</span>
+          <p style="font-size:12px;color:rgba(255,255,255,0.55);line-height:1.7;margin:0;"><strong style="color:rgba(255,215,0,0.9)">2048</strong> 타일을 만들면 승리! 더 이상 합칠 수 없으면 게임 오버</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+      <div style="flex:1;min-width:200px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px;">
+        <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:6px;letter-spacing:1px;">💡 고득점 전략</div>
+        <p style="font-size:12px;color:rgba(255,255,255,0.55);line-height:1.7;margin:0;">큰 숫자를 <strong style="color:rgba(255,255,255,0.75);">한쪽 모서리</strong>에 모아두세요. 한 번 이동에 여러 개를 합치면 <strong style="color:rgba(255,255,255,0.75);">콤보 보너스</strong>도 받아요!</p>
+      </div>
+      <div style="flex:1;min-width:200px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px;">
+        <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:6px;letter-spacing:1px;">🕹️ 조작법</div>
+        <p style="font-size:12px;color:rgba(255,255,255,0.55);line-height:1.7;margin:0;"><strong style="color:rgba(255,255,255,0.75);">모바일:</strong> 상하좌우 스와이프<br><strong style="color:rgba(255,255,255,0.75);">PC:</strong> 방향키 또는 W·A·S·D</p>
+      </div>
+    </div>
+
+    <div style="background:rgba(100,170,255,0.06);border:1px solid rgba(100,170,255,0.15);border-radius:10px;padding:12px;margin-bottom:14px;">
+      <div style="font-size:11px;color:rgba(100,170,255,0.7);margin-bottom:4px;letter-spacing:1px;">✨ 특징</div>
+      <p style="font-size:12px;color:rgba(255,255,255,0.5);line-height:1.8;margin:0;">
+        🌈 숫자별 <strong style="color:rgba(255,255,255,0.75);">네온 색상</strong> 타일 &nbsp;·&nbsp;
+        💥 합칠 때 <strong style="color:rgba(255,255,255,0.75);">파티클 이펙트</strong> &nbsp;·&nbsp;
+        💾 <strong style="color:rgba(255,255,255,0.75);">이어하기</strong> 지원 &nbsp;·&nbsp;
+        🏆 <strong style="color:rgba(255,255,255,0.75);">최고 점수</strong> 저장
+      </p>
+    </div>
+
+    <p style="font-size:12px;color:rgba(255,255,255,0.25);text-align:center;"><a href="https://mindweaver74.github.io/Jutopia" style="color:rgba(255,255,255,0.35);text-decoration:none;">🎮 Jutopia 게임 목록으로</a></p>
+  </div>
+</div>
+</body>
+</html>
